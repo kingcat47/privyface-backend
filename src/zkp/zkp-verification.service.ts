@@ -11,6 +11,10 @@ const VERIFICATION_KEY = JSON.parse(
   fs.readFileSync(path.join(process.cwd(), 'circuits', 'verification_key.json'), 'utf-8'),
 );
 
+// 서버가 허용하는 threshold 고정값 (프론트의 config.ts와 동일해야 함)
+// 공격자가 threshold를 임의로 바꾼 proof를 보내는 것을 차단
+const EXPECTED_THRESHOLD = '800000';
+
 @Injectable()
 export class ZkpVerificationService {
   private readonly logger = new Logger(ZkpVerificationService.name);
@@ -133,6 +137,19 @@ export class ZkpVerificationService {
 
       this.logger.log('  - publicSignals:', publicSignals);
       this.logger.log('  - proof.protocol:', proof.protocol);
+
+      // publicSignals = [root, threshold] (circom 회로 signal 선언 순서)
+      // root와 threshold가 서버 기대값과 일치하는지 먼저 확인
+      // → 공격자가 threshold를 부풀려서 아무 얼굴이나 통과시키는 공격 차단
+      const expectedRoot = this.configService.get<string>('MERKLE_ROOT')?.trim();
+      if (publicSignals[0] !== expectedRoot) {
+        this.logger.warn(`루트 불일치 — proof: ${publicSignals[0]}, .env: ${expectedRoot}`);
+        return false;
+      }
+      if (publicSignals[1] !== EXPECTED_THRESHOLD) {
+        this.logger.warn(`threshold 불일치 — proof: ${publicSignals[1]}, 기대값: ${EXPECTED_THRESHOLD}`);
+        return false;
+      }
 
       // snarkjs.groth16.verify(vk, publicSignals, proof)
       // verificationKey는 서버 로컬 파일에서 로드한 VERIFICATION_KEY 사용
