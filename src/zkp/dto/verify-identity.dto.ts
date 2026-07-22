@@ -5,9 +5,9 @@ export class MerkleProofDto {
 }
 
 export class FaceZkProofDto {
-  proof: string; // o1js base64 인코딩된 Proof 문자열
-  publicInput: string[]; // ["1"] - 유사도 통과 = "1"
-  verificationKey: string; // JSON 문자열
+  proof: string;          // JSON.stringify된 groth16 proof 문자열
+  publicSignals: string[]; // [root, threshold] — circom 회로의 public input
+  // verificationKey는 서버 로컬 파일에서 로드 (클라이언트 수신 제거)
 }
 
 export class VerifyIdentityDto {
